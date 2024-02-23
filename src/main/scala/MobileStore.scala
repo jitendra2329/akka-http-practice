@@ -73,21 +73,27 @@ object MobileStore extends App with MobileFormatProtocol {
     val mobileId = query.get("id")
 
     mobileId match {
-      case Some(id) => Try(id.toInt) match {
-        case Failure(_) => Future(HttpResponse(StatusCodes.NoContent))
-        case Success(value) =>
-          val mobileFuture = (mobileDbActor ? GetMobileById(value)).mapTo[Option[Mobile]]
-          mobileFuture.map {
-            case Some(value) => HttpResponse(
-              StatusCodes.OK,
-              entity = HttpEntity(
-                ContentTypes.`application/json`,
-                value.toJson.prettyPrint
-              )
+      case Some(id) =>
+        Try(id.toInt) match {
+          case Failure(ex) =>
+            Future(HttpResponse(
+              StatusCodes.NoContent,
+              entity = HttpEntity(ContentTypes.`text/plain(UTF-8)`, ex.getCause.toString)
             )
-            case None => HttpResponse(StatusCodes.NoContent)
-          }
-      }
+            )
+          case Success(value) =>
+            val mobileFuture = (mobileDbActor ? GetMobileById(value)).mapTo[Option[Mobile]]
+            mobileFuture.map {
+              case Some(value) => HttpResponse(
+                StatusCodes.OK,
+                entity = HttpEntity(
+                  ContentTypes.`application/json`,
+                  value.toJson.prettyPrint
+                )
+              )
+              case None => HttpResponse(StatusCodes.NoContent)
+            }
+        }
       case None => Future(HttpResponse(StatusCodes.NoContent))
     }
   }
